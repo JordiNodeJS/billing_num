@@ -94,6 +94,46 @@ class BillingController {
       res.status(500).json({ error: 'Error al buscar los albaranes en la base de datos' });
     }
   }
+
+  /**
+   * Actualiza el billing_num de los albaranes/order_num sin id_transaction
+   * @param req Solicitud HTTP
+   * @param res Respuesta HTTP
+   */
+  async updateBillingNumbers(req: Request, res: Response): Promise<void> {
+    try {
+      // Obtener primero la lista de números de albarán del endpoint process-csv
+      const csvFilePath = path.resolve(process.cwd(), 'billling_num.csv');
+      
+      // Verificar si el archivo existe
+      if (!fs.existsSync(csvFilePath)) {
+        res.status(404).json({ error: 'El archivo CSV no se encuentra' });
+        return;
+      }
+
+      // Extraer números de albarán del CSV
+      const orderNumbers = await csvService.extractOrderNumbers(csvFilePath);
+
+      if (orderNumbers.length === 0) {
+        res.status(404).json({ error: 'No se encontraron números de albarán en el archivo CSV' });
+        return;
+      }
+
+      // Actualizar los billing_num de los albaranes que no tienen id_transaction
+      const updateResults = await dbService.updateBillingNumbers(orderNumbers);
+      
+      res.json({
+        total: orderNumbers.length,
+        updated: updateResults.updated.length,
+        skipped: updateResults.skipped.length,
+        errors: updateResults.errors.length,
+        results: updateResults
+      });
+    } catch (error) {
+      console.error('Error al actualizar los números de facturación:', error);
+      res.status(500).json({ error: 'Error al actualizar los números de facturación' });
+    }
+  }
 }
 
 export default new BillingController();

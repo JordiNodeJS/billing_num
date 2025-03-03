@@ -12,4 +12,9 @@ router.get('/order/:orderNumber', billingController.findOrder);
 // Ruta para buscar todos los albaranes del CSV en la base de datos
 router.get('/find-all-orders', billingController.findMultipleOrders);
 
+// Ruta para actualizar el billing_num de los albaranes sin id_transaction
+// Configurada para responder tanto a GET como a POST para facilitar las pruebas
+router.get('/update-billing-numbers', billingController.updateBillingNumbers);
+router.post('/update-billing-numbers', billingController.updateBillingNumbers);
+
 export default router;
