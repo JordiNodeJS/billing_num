@@ -9,13 +9,48 @@ import dbService from '../services/dbService';
  */
 class BillingController {
   /**
+   * Maneja la subida de un archivo CSV
+   * @param req Solicitud HTTP
+   * @param res Respuesta HTTP
+   */
+  async uploadCSV(req: Request, res: Response): Promise<void> {
+    try {
+      if (!req.file) {
+        res.status(400).json({ error: 'No se ha proporcionado ningún archivo' });
+        return;
+      }
+
+      const uploadedFilePath = path.resolve(req.file.path);
+      
+      // Guardar la ruta del archivo en memoria para usarla en otras solicitudes
+      req.app.locals.lastUploadedFile = uploadedFilePath;
+
+      res.status(200).json({ 
+        message: 'Archivo CSV subido correctamente',
+        filename: req.file.filename,
+        path: uploadedFilePath
+      });
+    } catch (error) {
+      console.error('Error al subir el archivo CSV:', error);
+      res.status(500).json({ error: 'Error al procesar el archivo subido' });
+    }
+  }
+
+  /**
    * Procesa el archivo CSV y extrae los números de albarán
    * @param req Solicitud HTTP
    * @param res Respuesta HTTP
    */
   async processCSV(req: Request, res: Response): Promise<void> {
     try {
-      const csvFilePath = path.resolve(process.cwd(), 'billling_num.csv');
+      // Usar el archivo subido si existe, de lo contrario usar el archivo predeterminado
+      let csvFilePath: string;
+      
+      if (req.app.locals.lastUploadedFile) {
+        csvFilePath = req.app.locals.lastUploadedFile;
+      } else {
+        csvFilePath = path.resolve(process.cwd(), 'billling_num.csv');
+      }
       
       // Verificar si el archivo existe
       if (!fs.existsSync(csvFilePath)) {
@@ -78,8 +113,16 @@ class BillingController {
    */
   async findMultipleOrders(req: Request, res: Response): Promise<void> {
     try {
+      // Usar el archivo subido si existe, de lo contrario usar el archivo predeterminado
+      let csvFilePath: string;
+      
+      if (req.app.locals.lastUploadedFile) {
+        csvFilePath = req.app.locals.lastUploadedFile;
+      } else {
+        csvFilePath = path.resolve(process.cwd(), 'billling_num.csv');
+      }
+
       // Extraer números de albarán del CSV
-      const csvFilePath = path.resolve(process.cwd(), 'billling_num.csv');
       const orderNumbers = await csvService.extractOrderNumbers(csvFilePath);
       
       // Buscar los números de albarán en la base de datos
@@ -102,8 +145,14 @@ class BillingController {
    */
   async updateBillingNumbers(req: Request, res: Response): Promise<void> {
     try {
-      // Obtener primero la lista de números de albarán del endpoint process-csv
-      const csvFilePath = path.resolve(process.cwd(), 'billling_num.csv');
+      // Usar el archivo subido si existe, de lo contrario usar el archivo predeterminado
+      let csvFilePath: string;
+      
+      if (req.app.locals.lastUploadedFile) {
+        csvFilePath = req.app.locals.lastUploadedFile;
+      } else {
+        csvFilePath = path.resolve(process.cwd(), 'billing_num.csv');
+      }
       
       // Verificar si el archivo existe
       if (!fs.existsSync(csvFilePath)) {

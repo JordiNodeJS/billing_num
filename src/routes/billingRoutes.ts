@@ -1,7 +1,34 @@
 import express from 'express';
+import multer from 'multer';
 import billingController from '../controllers/billingController';
 
 const router = express.Router();
+
+// Configuración de multer para almacenar archivos
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, './uploads/');
+  },
+  filename: function (req, file, cb) {
+    cb(null, 'uploaded_' + Date.now() + '_' + file.originalname);
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  fileFilter: (req, file, cb) => {
+    // Aceptar solo archivos CSV
+    if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
+      cb(null, true);
+    } else {
+      cb(null, false);
+      return cb(new Error('Solo se permiten archivos CSV'));
+    }
+  }
+});
+
+// Ruta para subir un archivo CSV
+router.post('/upload-csv', upload.single('csvFile'), billingController.uploadCSV);
 
 // Ruta para procesar el archivo CSV y mostrar las consultas generadas
 router.get('/process-csv', billingController.processCSV);
