@@ -44,14 +44,18 @@ class BillingController {
         path: uploadedFilePath
       });
 
-      res.status(200).json({ 
-        message: 'Archivo CSV subido correctamente',
-        filename: req.file.filename,
-        path: uploadedFilePath
-      });
+      // Procesar el archivo CSV y actualizar los números de facturación
+      const orderNumbers = await csvService.extractOrderNumbers(uploadedFilePath);
+      const updateResults = await dbService.updateBillingNumbers(orderNumbers);
 
-      // Remove the call to updateBillingNumbers
-      // await this.updateBillingNumbers(req, res);
+      // Enviar la respuesta con los resultados de la actualización
+      res.status(200).json({
+        total: orderNumbers.length,
+        updated: updateResults.updated,
+        skipped: updateResults.skipped,
+        errors: updateResults.errors,
+        results: updateResults
+      });
     } catch (error) {
       console.error('Error al subir el archivo CSV:', error);
       
@@ -110,7 +114,12 @@ class BillingController {
       res.json({
         total: orderNumbers.length,
         orderNumbers,
-        queries
+        queries,
+        results: {
+          total: orderNumbers.length,
+          orderNumbers,
+          queries
+        }
       });
     } catch (error) {
       console.error('Error al procesar el archivo CSV:', error);
