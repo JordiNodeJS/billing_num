@@ -19,6 +19,28 @@ if (!fs.existsSync(uploadsDir)) {
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+// Store SSE clients
+const clients: { [id: string]: express.Response } = {};
+
+// SSE client management functions
+export const addClient = (id: string, res: express.Response) => {
+  clients[id] = res;
+  console.log(`Cliente SSE conectado: ${id}`);
+};
+
+export const removeClient = (id: string) => {
+  delete clients[id];
+  console.log(`Cliente SSE desconectado: ${id}`);
+};
+
+export const sendEventToAll = (event: string, data: any) => {
+  Object.keys(clients).forEach(clientId => {
+    const client = clients[clientId];
+    client.write(`event: ${event}\n`);
+    client.write(`data: ${JSON.stringify(data)}\n\n`);
+  });
+};
+
 // Configurar CORS
 app.use(cors({
   origin: ['http://localhost:5173', 'http://localhost:3000'],
@@ -32,6 +54,30 @@ app.use(express.json());
 // Rutas de la API
 app.use('/api', billingRoutes);
 
+// Ruta para SSE
+app.get('/api/sse', (req, res) => {
+  // Configurar la respuesta como SSE
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive'
+  });
+  
+  // Enviar un comentario para mantener la conexión abierta
+  res.write(':\n\n');
+  
+  // Generar un ID único para este cliente
+  const clientId = Date.now().toString();
+  
+  // Añadir este cliente a nuestra lista de clientes
+  addClient(clientId, res);
+  
+  // Cuando el cliente se desconecta
+  req.on('close', () => {
+    removeClient(clientId);
+  });
+});
+
 // Ruta principal
 app.get('/', (req, res) => {
   res.json({
@@ -41,7 +87,8 @@ app.get('/', (req, res) => {
       processCSV: '/api/process-csv',
       findOrder: '/api/order/:orderNumber',
       findAllOrders: '/api/find-all-orders',
-      updateBillingNumbers: '/api/update-billing-numbers'
+      updateBillingNumbers: '/api/update-billing-numbers',
+      sse: '/api/sse'
     }
   });
 });
@@ -51,3 +98,5 @@ app.listen(PORT, () => {
   console.log(`Servidor iniciado en http://localhost:${PORT}`);
   console.log(`Documentación de la API disponible en http://localhost:${PORT}`);
 });
+
+export default app;
