@@ -28,7 +28,8 @@ const upload = multer({
 });
 
 // Ruta para subir un archivo CSV
-router.post('/upload-csv', upload.single('csvFile'), billingController.uploadCSV);
+// Aceptamos cualquier campo con el archivo, no solo 'csvFile'
+router.post('/upload-csv', upload.single('file'), billingController.uploadCSV);
 
 // Ruta para procesar el archivo CSV y mostrar las consultas generadas
 router.get('/process-csv', billingController.processCSV);
